@@ -1,13 +1,21 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useOrderBookMetrics } from "../hooks/useOrderBookMetrics";
 import { OrderBookTable } from "../components/dashboard/OrderBookTable";
 import { DashboardStats } from "../components/dashboard/DashboardStats";
 import { ImbalanceChart } from "../components/dashboard/ImbalanceChart";
 import { LiquidityBarChart } from "../components/dashboard/LiquidityBarChart";
+import { SymbolDetailsPanel } from "../components/dashboard/SymbolDetailsPanel";
 
 export default function HomePage() {
   const { rows, connected, imbalanceHistory } = useOrderBookMetrics();
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+
+  const selected = useMemo(() => {
+    if (!selectedSymbol) return rows[0] ?? null;
+    return rows.find((row) => row.symbol === selectedSymbol) ?? null;
+  }, [rows, selectedSymbol]);
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
@@ -30,12 +38,18 @@ export default function HomePage() {
 
         <DashboardStats rows={rows} />
 
+        <SymbolDetailsPanel selected={selected} />
+
         <div className="grid gap-6 xl:grid-cols-2">
           <ImbalanceChart data={imbalanceHistory} />
           <LiquidityBarChart rows={rows} />
         </div>
 
-        <OrderBookTable rows={rows} />
+        <OrderBookTable
+          rows={rows}
+          selectedSymbol={selected?.symbol ?? null}
+          onSelectSymbol={setSelectedSymbol}
+        />
       </section>
     </main>
   );

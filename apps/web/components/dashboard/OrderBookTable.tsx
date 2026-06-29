@@ -2,9 +2,15 @@ import type { OrderBookMetric } from "../../types/orderbook";
 
 type Props = {
   rows: OrderBookMetric[];
+  selectedSymbol: string | null;
+  onSelectSymbol: (symbol: string) => void;
 };
 
-export function OrderBookTable({ rows }: Props) {
+export function OrderBookTable({
+  rows,
+  selectedSymbol,
+  onSelectSymbol,
+}: Props) {
   return (
     <div className="overflow-hidden rounded-2xl border border-cyan-400/20 bg-white/5 shadow-2xl shadow-cyan-500/10 backdrop-blur">
       <table className="w-full text-sm">
@@ -24,7 +30,10 @@ export function OrderBookTable({ rows }: Props) {
           {rows.map((row) => (
             <tr
               key={row.symbol}
-              className="border-t border-white/10 hover:bg-white/5"
+               onClick={() => onSelectSymbol(row.symbol)}
+                className={`cursor-pointer border-t border-white/10 hover:bg-white/5 ${
+                selectedSymbol === row.symbol ? "bg-cyan-400/10" : ""
+                }`}
             >
               <td className="px-4 py-3 font-semibold text-cyan-300">
                 {row.symbol}
