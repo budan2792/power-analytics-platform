@@ -2,23 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useOrderBookMetrics } from "../hooks/useOrderBookMetrics";
-import { OrderBookTable } from "../components/dashboard/OrderBookTable";
 import { DashboardStats } from "../components/dashboard/DashboardStats";
 import { ImbalanceChart } from "../components/dashboard/ImbalanceChart";
 import { LiquidityBarChart } from "../components/dashboard/LiquidityBarChart";
 import { SymbolDetailsPanel } from "../components/dashboard/SymbolDetailsPanel";
 import { SymbolImbalanceChart } from "../components/dashboard/SymbolImbalanceChart";
 import { DepthZonesPanel } from "../components/dashboard/DepthZonesPanel";
-import { DepthZonesTable } from "../components/dashboard/DepthZonesTable";
 import { DepthZonesChart } from "../components/dashboard/DepthZonesChart";
-
+import { OrderBookTable } from "../components/dashboard/OrderBookTable";
+import { WatchlistPanel } from "../components/dashboard/WatchlistPanel";
 
 export default function HomePage() {
   const { rows, connected, imbalanceHistory, symbolHistory } =
     useOrderBookMetrics();
 
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
-
   const [selectedDepth, setSelectedDepth] = useState(1);
 
   const selected = useMemo(() => {
@@ -30,58 +28,77 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
-      <section className="mx-auto max-w-7xl px-6 py-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Power Analytics Platform
-            </h1>
+      <div className="flex min-h-screen flex-col">
+        <header className="border-b border-cyan-400/20 bg-black/30 px-5 py-4 backdrop-blur">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Power Analytics Platform
+              </h1>
+              <p className="text-sm text-slate-400">
+                Live CEX liquidity and order book analytics terminal
+              </p>
+            </div>
 
-            <p className="mt-2 text-sm text-slate-400">
-              Live CEX liquidity and order book analytics
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="rounded-full border border-cyan-400/30 px-4 py-2 text-sm">
+                Binance Spot
+              </div>
+
+              <div className="rounded-full border border-cyan-400/30 px-4 py-2 text-sm">
+                {connected ? "🟢 Live connected" : "🔴 Disconnected"}
+              </div>
+            </div>
           </div>
+        </header>
 
-          <div className="rounded-full border border-cyan-400/30 px-4 py-2 text-sm">
-            {connected ? "🟢 Live connected" : "🔴 Disconnected"}
-          </div>
-        </div>
-
-        <DashboardStats rows={rows} />
-
-        <SymbolDetailsPanel selected={selected} />
-
-        <DepthZonesPanel
-          zones={selected?.depthZones ?? []}
-          selectedDepth={selectedDepth}
-          onSelectDepth={setSelectedDepth}
-        />
-
-        <DepthZonesTable
-          zones={selected?.depthZones ?? []}
-          selectedDepth={selectedDepth}
-          onSelectDepth={setSelectedDepth}
-        />
-
-        <DepthZonesChart zones={selected?.depthZones ?? []} />
-
-        <div className="grid gap-6 xl:grid-cols-2">
-          <ImbalanceChart data={imbalanceHistory} />
-
-          <SymbolImbalanceChart
-            symbol={selected?.symbol ?? null}
-            data={selectedHistory}
+        {/* Top terminal layout: watchlist + wide analytics area */}
+        <section className="grid flex-1 gap-4 p-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <WatchlistPanel
+            rows={rows}
+            selectedSymbol={selected?.symbol ?? null}
+            onSelectSymbol={setSelectedSymbol}
           />
-        </div>
 
-        <LiquidityBarChart rows={rows} />
+          <div className="min-w-0 space-y-4">
+            <DashboardStats rows={rows} />
 
+            <div className="grid gap-4 2xl:grid-cols-2">
+              <ImbalanceChart data={imbalanceHistory} />
+
+              <SymbolImbalanceChart
+                symbol={selected?.symbol ?? null}
+                data={selectedHistory}
+              />
+            </div>
+
+            <div className="grid gap-4 2xl:grid-cols-2">
+              <LiquidityBarChart rows={rows} />
+              <DepthZonesChart zones={selected?.depthZones ?? []} />
+            </div>
+          </div>
+        </section>
+
+        {/* Selected symbol details moved below charts */}
+        <section className="grid gap-4 p-4 pt-0 xl:grid-cols-2">
+          <SymbolDetailsPanel selected={selected} />
+
+          <DepthZonesPanel
+            zones={selected?.depthZones ?? []}
+            selectedDepth={selectedDepth}
+            onSelectDepth={setSelectedDepth}
+          />
+        </section>
+
+        {/* Bottom data tables */}
+       <section className="p-4 pt-0">
         <OrderBookTable
           rows={rows}
           selectedSymbol={selected?.symbol ?? null}
           onSelectSymbol={setSelectedSymbol}
         />
       </section>
+      </div>
     </main>
   );
 }

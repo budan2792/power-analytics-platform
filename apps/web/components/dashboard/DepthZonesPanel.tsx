@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { DepthZoneMetric } from "../../types/orderbook";
 
 type Props = {
@@ -15,6 +18,8 @@ export function DepthZonesPanel({
   selectedDepth,
   onSelectDepth,
 }: Props) {
+  const [showTable, setShowTable] = useState(false);
+
   const selectedZone =
     zones.find((zone) => zone.percent === selectedDepth) ?? zones[0];
 
@@ -30,10 +35,7 @@ export function DepthZonesPanel({
     <div className="mb-6 rounded-2xl border border-cyan-400/20 bg-white/5 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur">
       <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-white">
-            Order Book Depth
-          </h2>
-
+          <h2 className="text-lg font-semibold text-white">Order Book Depth</h2>
           <p className="text-sm text-slate-400">
             Liquidity inside selected price depth range
           </p>
@@ -53,6 +55,13 @@ export function DepthZonesPanel({
               {zone.percent}%
             </button>
           ))}
+
+          <button
+            onClick={() => setShowTable((value) => !value)}
+            className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-400/40 hover:text-cyan-200"
+          >
+            {showTable ? "Hide table" : "Show table"}
+          </button>
         </div>
       </div>
 
@@ -107,6 +116,68 @@ export function DepthZonesPanel({
           </div>
         </div>
       </div>
+
+      {showTable && (
+        <div className="mt-5 overflow-hidden rounded-xl border border-white/10">
+          <table className="w-full text-sm">
+            <thead className="bg-cyan-400/10 text-cyan-200">
+              <tr>
+                <th className="px-4 py-3 text-left">Depth</th>
+                <th className="px-4 py-3 text-right">Bid levels</th>
+                <th className="px-4 py-3 text-right">Ask levels</th>
+                <th className="px-4 py-3 text-right">Buy $</th>
+                <th className="px-4 py-3 text-right">Sell $</th>
+                <th className="px-4 py-3 text-right">Total $</th>
+                <th className="px-4 py-3 text-right">Diff $</th>
+                <th className="px-4 py-3 text-right">Imbalance</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {zones.map((zone) => (
+                <tr
+                  key={zone.percent}
+                  onClick={() => onSelectDepth(zone.percent)}
+                  className={`cursor-pointer border-t border-white/10 hover:bg-white/5 ${
+                    selectedDepth === zone.percent ? "bg-cyan-400/10" : ""
+                  }`}
+                >
+                  <td className="px-4 py-3 font-semibold text-cyan-300">
+                    {zone.percent}%
+                  </td>
+                  <td className="px-4 py-3 text-right">{zone.bidLevels}</td>
+                  <td className="px-4 py-3 text-right">{zone.askLevels}</td>
+                  <td className="px-4 py-3 text-right text-emerald-400">
+                    {formatUsd(zone.buyValue)}
+                  </td>
+                  <td className="px-4 py-3 text-right text-red-400">
+                    {formatUsd(zone.sellValue)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {formatUsd(zone.totalValue)}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-right ${
+                      zone.diffValue >= 0 ? "text-emerald-400" : "text-red-400"
+                    }`}
+                  >
+                    {formatUsd(zone.diffValue)}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-right ${
+                      zone.imbalancePercent >= 0
+                        ? "text-emerald-400"
+                        : "text-red-400"
+                    }`}
+                  >
+                    {zone.imbalancePercent.toFixed(2)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
