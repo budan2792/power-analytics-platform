@@ -4,6 +4,7 @@ import { useOrderBookMetrics } from "../hooks/useOrderBookMetrics";
 import { OrderBookTable } from "../components/dashboard/OrderBookTable";
 import { DashboardStats } from "../components/dashboard/DashboardStats";
 import { ImbalanceChart } from "../components/dashboard/ImbalanceChart";
+import { LiquidityBarChart } from "../components/dashboard/LiquidityBarChart";
 
 export default function HomePage() {
   const { rows, connected, imbalanceHistory } = useOrderBookMetrics();
@@ -29,7 +30,10 @@ export default function HomePage() {
 
         <DashboardStats rows={rows} />
 
-        <ImbalanceChart data={imbalanceHistory} />
+        <div className="grid gap-6 xl:grid-cols-2">
+          <ImbalanceChart data={imbalanceHistory} />
+          <LiquidityBarChart rows={rows} />
+        </div>
 
         <OrderBookTable rows={rows} />
       </section>

@@ -93,8 +93,11 @@ for (const symbol of TOP_SYMBOLS) {
 setInterval(() => {
   const rows = [];
 
-  for (const runtime of runtimes.values()) {
-    if (!runtime.snapshotLoaded) continue;
+  // Йдемо саме по TOP_SYMBOLS, щоб порядок завжди був стабільний
+  for (const symbol of TOP_SYMBOLS) {
+    const runtime = runtimes.get(symbol);
+
+    if (!runtime || !runtime.snapshotLoaded) continue;
 
     const m = calculateOrderBookMetrics(runtime.symbol, runtime.engine, 100);
 
@@ -111,13 +114,10 @@ setInterval(() => {
     });
   }
 
-  // Найліквідніші зверху
-  rows.sort((a, b) => b.totalValueUSDT - a.totalValueUSDT);
-
   console.clear();
   console.table(rows);
 
-  // Надсилаємо live-дані у майбутній frontend
+  // Надсилаємо live-дані у frontend у стабільному порядку
   apiServer.broadcast({
     type: "orderbook_metrics",
     data: rows,
