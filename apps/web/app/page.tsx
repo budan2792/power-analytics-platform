@@ -7,15 +7,20 @@ import { DashboardStats } from "../components/dashboard/DashboardStats";
 import { ImbalanceChart } from "../components/dashboard/ImbalanceChart";
 import { LiquidityBarChart } from "../components/dashboard/LiquidityBarChart";
 import { SymbolDetailsPanel } from "../components/dashboard/SymbolDetailsPanel";
+import { SymbolImbalanceChart } from "../components/dashboard/SymbolImbalanceChart";
 
 export default function HomePage() {
-  const { rows, connected, imbalanceHistory } = useOrderBookMetrics();
+  const { rows, connected, imbalanceHistory, symbolHistory } =
+    useOrderBookMetrics();
+
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
 
   const selected = useMemo(() => {
     if (!selectedSymbol) return rows[0] ?? null;
     return rows.find((row) => row.symbol === selectedSymbol) ?? null;
   }, [rows, selectedSymbol]);
+
+  const selectedHistory = selected ? symbolHistory[selected.symbol] ?? [] : [];
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
@@ -42,8 +47,14 @@ export default function HomePage() {
 
         <div className="grid gap-6 xl:grid-cols-2">
           <ImbalanceChart data={imbalanceHistory} />
-          <LiquidityBarChart rows={rows} />
+
+          <SymbolImbalanceChart
+            symbol={selected?.symbol ?? null}
+            data={selectedHistory}
+          />
         </div>
+
+        <LiquidityBarChart rows={rows} />
 
         <OrderBookTable
           rows={rows}

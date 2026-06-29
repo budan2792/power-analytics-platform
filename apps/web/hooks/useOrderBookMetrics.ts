@@ -8,15 +8,17 @@ export type ImbalanceHistoryPoint = {
   imbalance: number;
 };
 
+export type SymbolHistoryMap = Record<string, ImbalanceHistoryPoint[]>;
+
 export function useOrderBookMetrics() {
   const [rows, setRows] = useState<OrderBookMetric[]>([]);
   const [connected, setConnected] = useState(false);
   const [imbalanceHistory, setImbalanceHistory] = useState<
     ImbalanceHistoryPoint[]
   >([]);
+  const [symbolHistory, setSymbolHistory] = useState<SymbolHistoryMap>({});
 
   useEffect(() => {
-    // Live-зʼєднання з backend API
     const ws = new WebSocket("ws://localhost:4000/ws");
 
     ws.onopen = () => setConnected(true);
@@ -29,7 +31,6 @@ export function useOrderBookMetrics() {
 
       setRows(payload.data);
 
-      // Рахуємо загальний дисбаланс по всіх парах
       const totalBuy = payload.data.reduce(
         (sum, row) => sum + row.buyValueUSDT,
         0
@@ -42,10 +43,9 @@ export function useOrderBookMetrics() {
 
       const total = totalBuy + totalSell;
       const imbalance = total > 0 ? ((totalBuy - totalSell) / total) * 100 : 0;
-
       const time = new Date().toLocaleTimeString();
 
-      // Зберігаємо останні 60 точок графіка
+      // Загальна історія по всьому ринку
       setImbalanceHistory((prev) => [
         ...prev.slice(-59),
         {
@@ -53,6 +53,25 @@ export function useOrderBookMetrics() {
           imbalance: Number(imbalance.toFixed(2)),
         },
       ]);
+
+      // Історія окремо по кожній парі
+      setSymbolHistory((prev) => {
+        const next = { ...prev };
+
+        for (const row of payload.data) {
+          const current = next[row.symbol] ?? [];
+
+          next[row.symbol] = [
+            ...current.slice(-59),
+            {
+              time,
+              imbalance: row.imbalancePercent,
+            },
+          ];
+        }
+
+        return next;
+      });
     };
 
     return () => ws.close();
@@ -62,5 +81,6 @@ export function useOrderBookMetrics() {
     rows,
     connected,
     imbalanceHistory,
+    symbolHistory,
   };
 }

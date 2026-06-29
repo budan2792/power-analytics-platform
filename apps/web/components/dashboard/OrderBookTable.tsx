@@ -1,4 +1,5 @@
 import type { OrderBookMetric } from "../../types/orderbook";
+import { MarketSignalBadge } from "./MarketSignalBadge";
 
 type Props = {
   rows: OrderBookMetric[];
@@ -22,6 +23,7 @@ export function OrderBookTable({
             <th className="px-4 py-3 text-right">Total $</th>
             <th className="px-4 py-3 text-right">Diff $</th>
             <th className="px-4 py-3 text-right">Imbalance</th>
+            <th className="px-4 py-3 text-right">Signal</th>
             <th className="px-4 py-3 text-right">Spread</th>
           </tr>
         </thead>
@@ -30,10 +32,10 @@ export function OrderBookTable({
           {rows.map((row) => (
             <tr
               key={row.symbol}
-               onClick={() => onSelectSymbol(row.symbol)}
-                className={`cursor-pointer border-t border-white/10 hover:bg-white/5 ${
+              onClick={() => onSelectSymbol(row.symbol)}
+              className={`cursor-pointer border-t border-white/10 hover:bg-white/5 ${
                 selectedSymbol === row.symbol ? "bg-cyan-400/10" : ""
-                }`}
+              }`}
             >
               <td className="px-4 py-3 font-semibold text-cyan-300">
                 {row.symbol}
@@ -67,6 +69,10 @@ export function OrderBookTable({
                 }`}
               >
                 {row.imbalancePercent}%
+              </td>
+
+              <td className="px-4 py-3 text-right">
+                <MarketSignalBadge row={row} />
               </td>
 
               <td className="px-4 py-3 text-right text-slate-300">
