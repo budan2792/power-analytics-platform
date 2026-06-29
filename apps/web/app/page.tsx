@@ -2,6 +2,7 @@
 
 import { useOrderBookMetrics } from "../hooks/useOrderBookMetrics";
 import { OrderBookTable } from "../components/dashboard/OrderBookTable";
+import { DashboardStats } from "../components/dashboard/DashboardStats";
 
 export default function HomePage() {
   const { rows, connected } = useOrderBookMetrics();
@@ -24,6 +25,8 @@ export default function HomePage() {
             {connected ? "🟢 Live connected" : "🔴 Disconnected"}
           </div>
         </div>
+
+        <DashboardStats rows={rows} />
 
         <OrderBookTable rows={rows} />
       </section>
