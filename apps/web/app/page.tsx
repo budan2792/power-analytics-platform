@@ -3,9 +3,10 @@
 import { useOrderBookMetrics } from "../hooks/useOrderBookMetrics";
 import { OrderBookTable } from "../components/dashboard/OrderBookTable";
 import { DashboardStats } from "../components/dashboard/DashboardStats";
+import { ImbalanceChart } from "../components/dashboard/ImbalanceChart";
 
 export default function HomePage() {
-  const { rows, connected } = useOrderBookMetrics();
+  const { rows, connected, imbalanceHistory } = useOrderBookMetrics();
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
@@ -27,6 +28,8 @@ export default function HomePage() {
         </div>
 
         <DashboardStats rows={rows} />
+
+        <ImbalanceChart data={imbalanceHistory} />
 
         <OrderBookTable rows={rows} />
       </section>
