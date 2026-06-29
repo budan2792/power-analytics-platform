@@ -8,12 +8,18 @@ import { ImbalanceChart } from "../components/dashboard/ImbalanceChart";
 import { LiquidityBarChart } from "../components/dashboard/LiquidityBarChart";
 import { SymbolDetailsPanel } from "../components/dashboard/SymbolDetailsPanel";
 import { SymbolImbalanceChart } from "../components/dashboard/SymbolImbalanceChart";
+import { DepthZonesPanel } from "../components/dashboard/DepthZonesPanel";
+import { DepthZonesTable } from "../components/dashboard/DepthZonesTable";
+import { DepthZonesChart } from "../components/dashboard/DepthZonesChart";
+
 
 export default function HomePage() {
   const { rows, connected, imbalanceHistory, symbolHistory } =
     useOrderBookMetrics();
 
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+
+  const [selectedDepth, setSelectedDepth] = useState(1);
 
   const selected = useMemo(() => {
     if (!selectedSymbol) return rows[0] ?? null;
@@ -44,6 +50,20 @@ export default function HomePage() {
         <DashboardStats rows={rows} />
 
         <SymbolDetailsPanel selected={selected} />
+
+        <DepthZonesPanel
+          zones={selected?.depthZones ?? []}
+          selectedDepth={selectedDepth}
+          onSelectDepth={setSelectedDepth}
+        />
+
+        <DepthZonesTable
+          zones={selected?.depthZones ?? []}
+          selectedDepth={selectedDepth}
+          onSelectDepth={setSelectedDepth}
+        />
+
+        <DepthZonesChart zones={selected?.depthZones ?? []} />
 
         <div className="grid gap-6 xl:grid-cols-2">
           <ImbalanceChart data={imbalanceHistory} />
