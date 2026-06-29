@@ -1,87 +1,125 @@
+import { TOP_SYMBOLS } from "./config/symbols.js";
 import { BinanceAdapter } from "./exchanges/binance.adapter.js";
 import { OrderBookEngine } from "./orderbook/orderbook.engine.js";
 import { calculateOrderBookMetrics } from "./analytics/orderbook.metrics.js";
+import { ApiServer } from "./server/api.server.js";
 import type { DepthUpdate } from "./types/orderbook.types.js";
 
-const SYMBOL = "BTCUSDT";
+// Стан для одного символу
+type SymbolRuntime = {
+  symbol: string;
+  engine: OrderBookEngine;
+  adapter: BinanceAdapter;
+  snapshotLoaded: boolean;
+  lastUpdateId: number;
+  buffer: DepthUpdate[];
+};
 
-const engine = new OrderBookEngine();
+// Усі активні символи
+const runtimes = new Map<string, SymbolRuntime>();
 
-let snapshotLoaded = false;
-let lastUpdateId = 0;
+// API для майбутнього frontend dashboard
+const apiServer = new ApiServer(4000);
+await apiServer.start();
 
-// Буфер для WebSocket-повідомлень до завантаження snapshot
-const buffer: DepthUpdate[] = [];
+// Запускаємо Binance adapter для кожного символу
+for (const symbol of TOP_SYMBOLS) {
+  const engine = new OrderBookEngine();
 
-const binance = new BinanceAdapter({
-  symbol: SYMBOL,
+  const runtime: SymbolRuntime = {
+    symbol,
+    engine,
+    adapter: null as unknown as BinanceAdapter,
+    snapshotLoaded: false,
+    lastUpdateId: 0,
+    buffer: [],
+  };
 
-  onOpen: async () => {
-    console.log("WebSocket connected");
+  const adapter = new BinanceAdapter({
+    symbol,
 
-    // Спочатку завантажуємо повний стакан
-    const snapshot = await binance.loadSnapshot();
+    onOpen: async () => {
+      console.log(`${symbol}: WebSocket connected`);
 
-    lastUpdateId = snapshot.lastUpdateId;
-    engine.applySnapshot(snapshot.bids, snapshot.asks);
+      // Завантажуємо початковий стакан
+      const snapshot = await adapter.loadSnapshot();
 
-    // Потім застосовуємо накопичені WebSocket-оновлення
-    const validUpdates = buffer.filter((u) => u.u > lastUpdateId);
+      runtime.lastUpdateId = snapshot.lastUpdateId;
+      runtime.engine.applySnapshot(snapshot.bids, snapshot.asks);
 
-    for (const update of validUpdates) {
-      engine.applyUpdate(update.b, update.a);
-      lastUpdateId = update.u;
-    }
+      // Застосовуємо оновлення, які прийшли до snapshot
+      const validUpdates = runtime.buffer.filter(
+        (u) => u.u > runtime.lastUpdateId
+      );
 
-    snapshotLoaded = true;
-    console.log("Snapshot loaded");
-  },
+      for (const update of validUpdates) {
+        runtime.engine.applyUpdate(update.b, update.a);
+        runtime.lastUpdateId = update.u;
+      }
 
-  onUpdate: (update) => {
-    // Поки snapshot не завантажено — складаємо оновлення в буфер
-    if (!snapshotLoaded) {
-      buffer.push(update);
-      return;
-    }
+      runtime.snapshotLoaded = true;
+      console.log(`${symbol}: Snapshot loaded`);
+    },
 
-    // Ігноруємо старі оновлення
-    if (update.u <= lastUpdateId) {
-      return;
-    }
+    onUpdate: (update) => {
+      // До snapshot — складаємо updates у буфер
+      if (!runtime.snapshotLoaded) {
+        runtime.buffer.push(update);
+        return;
+      }
 
-    // Оновлюємо локальний стакан
-    engine.applyUpdate(update.b, update.a);
-    lastUpdateId = update.u;
-  },
+      // Старі updates ігноруємо
+      if (update.u <= runtime.lastUpdateId) {
+        return;
+      }
 
-  onError: (error) => {
-    console.error("WebSocket error:", error.message);
-  },
-});
+      // Оновлюємо локальний стакан
+      runtime.engine.applyUpdate(update.b, update.a);
+      runtime.lastUpdateId = update.u;
+    },
 
-binance.connect();
+    onError: (error) => {
+      console.error(`${symbol}: WebSocket error:`, error.message);
+    },
+  });
 
-// Раз на секунду виводимо метрики
+  runtime.adapter = adapter;
+  runtimes.set(symbol, runtime);
+
+  adapter.connect();
+}
+
+// Раз на секунду рахуємо метрики і віддаємо їх у frontend
 setInterval(() => {
-  if (!snapshotLoaded) return;
+  const rows = [];
 
-  const m = calculateOrderBookMetrics(SYMBOL, engine, 100);
+  for (const runtime of runtimes.values()) {
+    if (!runtime.snapshotLoaded) continue;
+
+    const m = calculateOrderBookMetrics(runtime.symbol, runtime.engine, 100);
+
+    rows.push({
+      symbol: m.symbol,
+      buyValueUSDT: Number(m.buyValue.toFixed(2)),
+      sellValueUSDT: Number(m.sellValue.toFixed(2)),
+      totalValueUSDT: Number((m.buyValue + m.sellValue).toFixed(2)),
+      diffUSDT: Number(m.valueDifference.toFixed(2)),
+      imbalancePercent: Number(m.imbalancePercent.toFixed(2)),
+      spread: Number(m.spread.toFixed(6)),
+      bestBid: m.bestBid,
+      bestAsk: m.bestAsk,
+    });
+  }
+
+  // Найліквідніші зверху
+  rows.sort((a, b) => b.totalValueUSDT - a.totalValueUSDT);
 
   console.clear();
-  console.table({
-    symbol: m.symbol,
-    bidLevels: m.bidLevels,
-    askLevels: m.askLevels,
-    buyVolume: m.buyVolume.toFixed(4),
-    sellVolume: m.sellVolume.toFixed(4),
-    buyValueUSDT: m.buyValue.toFixed(2),
-    sellValueUSDT: m.sellValue.toFixed(2),
-    valueDifferenceUSDT: m.valueDifference.toFixed(2),
-    imbalancePercent: `${m.imbalancePercent.toFixed(2)}%`,
-    bestBid: m.bestBid,
-    bestAsk: m.bestAsk,
-    spread: m.spread.toFixed(2),
+  console.table(rows);
+
+  // Надсилаємо live-дані у майбутній frontend
+  apiServer.broadcast({
+    type: "orderbook_metrics",
+    data: rows,
   });
 }, 1000);
-
-// to start project run 'pnpm dev'

@@ -1,0 +1,1 @@
+## To start dev environment run command "pnpm dev"
