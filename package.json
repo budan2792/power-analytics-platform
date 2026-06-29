@@ -1,0 +1,29 @@
+{
+  "name": "power-analytics-platform",
+  "version": "1.0.0",
+  "description": "Crypto analytics platform",
+  "main": "index.js",
+  "scripts": {
+    "dev": "pnpm --filter api dev"
+  },
+  "keywords": [],
+  "author": "Budan and Yar",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.1.2",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "dependencies": {
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.1",
+    "@types/ws": "^8.18.1"
+  }
+}
