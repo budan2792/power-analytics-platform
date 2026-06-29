@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model MarketMinuteSnapshot {
+  id        String   @id @default(cuid())
+
+  exchange  String
+  symbol    String
+  minute    DateTime
+
+  openPrice  Float
+  highPrice  Float
+  lowPrice   Float
+  closePrice Float
+  avgPrice   Float
+
+  avgBuyValueUSDT      Float
+  avgSellValueUSDT     Float
+  avgTotalValueUSDT    Float
+  avgDiffUSDT          Float
+  avgImbalancePercent  Float
+  avgSpread            Float
+
+  minImbalancePercent Float
+  maxImbalancePercent Float
+
+  samplesCount Int
+
+  depthZones Json
+  lastState   Json
+
+  createdAt DateTime @default(now())
+
+  @@unique([exchange, symbol, minute])
+  @@index([symbol, minute])
+  @@index([exchange, minute])
+}

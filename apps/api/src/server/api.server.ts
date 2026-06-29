@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { WebSocketServer } from "ws";
+import { prisma } from "../database/prisma.js";
 
 export type DashboardPayload = {
   type: "orderbook_metrics";
@@ -14,6 +15,7 @@ export class ApiServer {
   constructor(private port = 4000) {}
 
   async start() {
+
     await this.app.register(cors, {
       origin: true,
     });
@@ -25,6 +27,31 @@ export class ApiServer {
         service: "power-analytics-platform-api",
       };
     });
+
+
+    // Історичні хвилинні дані по символу
+    this.app.get<{
+      Params: { symbol: string };
+      Querystring: { limit?: string };
+    }>("/history/:symbol", async (request) => {
+      const symbol = request.params.symbol.toUpperCase();
+      const limit = Math.min(Number(request.query.limit ?? 100), 1000);
+
+      const rows = await prisma.marketMinuteSnapshot.findMany({
+        where: {
+          exchange: "binance_spot",
+          symbol,
+        },
+        orderBy: {
+          minute: "desc",
+        },
+        take: limit,
+      });
+
+      return rows.reverse();
+    });
+
+
 
     // HTTP сервер + WebSocket upgrade
     this.app.server.on("upgrade", (request, socket, head) => {

@@ -4,6 +4,7 @@ import { OrderBookEngine } from "./orderbook/orderbook.engine.js";
 import { calculateOrderBookMetrics } from "./analytics/orderbook.metrics.js";
 import { ApiServer } from "./server/api.server.js";
 import type { DepthUpdate } from "./types/orderbook.types.js";
+import { MinuteAggregator } from "./storage/minute-aggregator.js";
 
 // Стан для одного символу
 type SymbolRuntime = {
@@ -20,6 +21,7 @@ const runtimes = new Map<string, SymbolRuntime>();
 
 // API для майбутнього frontend dashboard
 const apiServer = new ApiServer(4000);
+const minuteAggregator = new MinuteAggregator();
 await apiServer.start();
 
 // Запускаємо Binance adapter для кожного символу
@@ -90,7 +92,7 @@ for (const symbol of TOP_SYMBOLS) {
 }
 
 // Раз на секунду рахуємо метрики і віддаємо їх у frontend
-setInterval(() => {
+setInterval(async () => {
   const rows = [];
 
   // Йдемо саме по TOP_SYMBOLS, щоб порядок завжди був стабільний
@@ -124,4 +126,11 @@ setInterval(() => {
     type: "orderbook_metrics",
     data: rows,
   });
+
+  for (const row of rows) {
+  minuteAggregator.addSample("binance_spot", row);
+}
+
+  await minuteAggregator.flushCompletedBuckets();
+
 }, 1000);
