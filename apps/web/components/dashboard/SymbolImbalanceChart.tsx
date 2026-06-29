@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -20,11 +21,11 @@ export function SymbolImbalanceChart({ symbol, data }: Props) {
     <div className="mb-6 rounded-2xl border border-cyan-400/20 bg-white/5 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur">
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-white">
-          {symbol ? `${symbol} Imbalance` : "Symbol Imbalance"}
+          {symbol ? `${symbol} Imbalance / Price` : "Symbol Imbalance / Price"}
         </h2>
 
         <p className="text-sm text-slate-400">
-          Live buy/sell imbalance for selected symbol
+          Live imbalance and price curve for selected symbol
         </p>
       </div>
 
@@ -32,7 +33,21 @@ export function SymbolImbalanceChart({ symbol, data }: Props) {
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
             <XAxis dataKey="time" hide />
-            <YAxis stroke="#94a3b8" domain={["auto", "auto"]} />
+
+            {/* Ліва шкала — imbalance */}
+            <YAxis
+              yAxisId="imbalance"
+              stroke="#94a3b8"
+              domain={["auto", "auto"]}
+            />
+
+            {/* Права шкала — ціна */}
+            <YAxis
+              yAxisId="price"
+              orientation="right"
+              stroke="#facc15"
+              domain={["auto", "auto"]}
+            />
 
             <Tooltip
               contentStyle={{
@@ -45,13 +60,36 @@ export function SymbolImbalanceChart({ symbol, data }: Props) {
                 color: "#67e8f9",
                 fontWeight: 700,
               }}
-              formatter={(value) => [`${value}%`, "Imbalance"]}
+              formatter={(value, name) => {
+                if (name === "price") {
+                  return [`$${Number(value).toLocaleString()}`, "Price"];
+                }
+
+                return [`${value}%`, "Imbalance"];
+              }}
             />
 
+            <Legend />
+
+            {/* Крива imbalance */}
             <Line
+              yAxisId="imbalance"
               type="monotone"
               dataKey="imbalance"
+              name="Imbalance"
               stroke="#22d3ee"
+              strokeWidth={2}
+              dot={false}
+              isAnimationActive={false}
+            />
+
+            {/* Крива ціни */}
+            <Line
+              yAxisId="price"
+              type="monotone"
+              dataKey="price"
+              name="Price"
+              stroke="#facc15"
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}

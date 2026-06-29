@@ -103,6 +103,7 @@ setInterval(() => {
 
     rows.push({
       symbol: m.symbol,
+      price: Number(m.price.toFixed(8)),
       buyValueUSDT: Number(m.buyValue.toFixed(2)),
       sellValueUSDT: Number(m.sellValue.toFixed(2)),
       totalValueUSDT: Number((m.buyValue + m.sellValue).toFixed(2)),
@@ -111,6 +112,7 @@ setInterval(() => {
       spread: Number(m.spread.toFixed(6)),
       bestBid: m.bestBid,
       bestAsk: m.bestAsk,
+      depthZones: m.depthZones,
     });
   }
 

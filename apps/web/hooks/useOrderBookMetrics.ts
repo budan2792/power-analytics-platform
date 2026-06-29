@@ -6,6 +6,7 @@ import type { OrderBookMetric, WsPayload } from "../types/orderbook";
 export type ImbalanceHistoryPoint = {
   time: string;
   imbalance: number;
+  price?: number;
 };
 
 export type SymbolHistoryMap = Record<string, ImbalanceHistoryPoint[]>;
@@ -64,8 +65,9 @@ export function useOrderBookMetrics() {
           next[row.symbol] = [
             ...current.slice(-59),
             {
-              time,
-              imbalance: row.imbalancePercent,
+                time,
+                imbalance: row.imbalancePercent,
+                price: row.price,
             },
           ];
         }

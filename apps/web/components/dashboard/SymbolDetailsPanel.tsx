@@ -19,6 +19,7 @@ export function SymbolDetailsPanel({ selected }: Props) {
 
   return (
     <div className="mb-6 rounded-2xl border border-cyan-400/20 bg-white/5 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur">
+    
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-cyan-300">
@@ -41,41 +42,44 @@ export function SymbolDetailsPanel({ selected }: Props) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <div className="text-xs uppercase text-slate-500">Best bid</div>
-          <div className="mt-2 text-lg font-semibold">
-            {selected.bestBid.toLocaleString()}
-          </div>
+     <div className="grid gap-4 md:grid-cols-5">
+    <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-4">
+        <div className="text-xs uppercase text-slate-500">Price</div>
+        <div className="mt-2 text-lg font-semibold text-cyan-300">
+        ${selected.price.toLocaleString()}
         </div>
+    </div>
 
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <div className="text-xs uppercase text-slate-500">Best ask</div>
-          <div className="mt-2 text-lg font-semibold">
-            {selected.bestAsk.toLocaleString()}
-          </div>
+    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs uppercase text-slate-500">Best bid</div>
+        <div className="mt-2 text-lg font-semibold">
+        {selected.bestBid.toLocaleString()}
         </div>
+    </div>
 
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <div className="text-xs uppercase text-slate-500">Spread</div>
-          <div className="mt-2 text-lg font-semibold">
-            {selected.spread}
-          </div>
+    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs uppercase text-slate-500">Best ask</div>
+        <div className="mt-2 text-lg font-semibold">
+        {selected.bestAsk.toLocaleString()}
         </div>
+    </div>
 
-        <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-          <div className="text-xs uppercase text-slate-500">Imbalance</div>
-          <div
-            className={`mt-2 text-lg font-semibold ${
-              selected.imbalancePercent >= 0
-                ? "text-emerald-400"
-                : "text-red-400"
-            }`}
-          >
-            {selected.imbalancePercent}%
-          </div>
+    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs uppercase text-slate-500">Spread</div>
+        <div className="mt-2 text-lg font-semibold">{selected.spread}</div>
+    </div>
+
+    <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+        <div className="text-xs uppercase text-slate-500">Imbalance</div>
+        <div
+        className={`mt-2 text-lg font-semibold ${
+            selected.imbalancePercent >= 0 ? "text-emerald-400" : "text-red-400"
+        }`}
+        >
+        {selected.imbalancePercent}%
         </div>
-      </div>
+    </div>
+    </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-4">

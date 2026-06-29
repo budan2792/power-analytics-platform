@@ -18,6 +18,7 @@ export function OrderBookTable({
         <thead className="bg-cyan-400/10 text-cyan-200">
           <tr>
             <th className="px-4 py-3 text-left">Symbol</th>
+            <th className="px-4 py-3 text-right">Price</th>
             <th className="px-4 py-3 text-right">Buy $</th>
             <th className="px-4 py-3 text-right">Sell $</th>
             <th className="px-4 py-3 text-right">Total $</th>
@@ -39,6 +40,10 @@ export function OrderBookTable({
             >
               <td className="px-4 py-3 font-semibold text-cyan-300">
                 {row.symbol}
+              </td>
+
+              <td className="px-4 py-3 text-right text-white">
+                ${row.price.toLocaleString()}
               </td>
 
               <td className="px-4 py-3 text-right">

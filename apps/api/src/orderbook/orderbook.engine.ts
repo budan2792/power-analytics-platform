@@ -1,13 +1,9 @@
 import type { OrderBookLevelRaw } from "../types/orderbook.types.js";
 
 export class OrderBookEngine {
-  // Buy-рівні стакану
   private bids = new Map<number, number>();
-
-  // Sell-рівні стакану
   private asks = new Map<number, number>();
 
-  // Повністю замінюємо стакан snapshot-ом
   applySnapshot(bids: OrderBookLevelRaw[], asks: OrderBookLevelRaw[]) {
     this.bids.clear();
     this.asks.clear();
@@ -16,27 +12,41 @@ export class OrderBookEngine {
     this.applyLevels(this.asks, asks);
   }
 
-  // Накладаємо WebSocket-оновлення на стакан
   applyUpdate(bids: OrderBookLevelRaw[], asks: OrderBookLevelRaw[]) {
     this.applyLevels(this.bids, bids);
     this.applyLevels(this.asks, asks);
   }
 
-  // Отримати топ buy-рівнів
   getTopBids(limit = 100) {
     return [...this.bids.entries()]
       .sort((a, b) => b[0] - a[0])
       .slice(0, limit);
   }
 
-  // Отримати топ sell-рівнів
   getTopAsks(limit = 100) {
     return [...this.asks.entries()]
       .sort((a, b) => a[0] - b[0])
       .slice(0, limit);
   }
 
-  // Додаємо, оновлюємо або видаляємо рівні
+  // Buy-рівні в межах % нижче від midPrice
+  getBidsWithinPercent(midPrice: number, percent: number) {
+    const minPrice = midPrice * (1 - percent / 100);
+
+    return [...this.bids.entries()]
+      .filter(([price]) => price >= minPrice && price <= midPrice)
+      .sort((a, b) => b[0] - a[0]);
+  }
+
+  // Sell-рівні в межах % вище від midPrice
+  getAsksWithinPercent(midPrice: number, percent: number) {
+    const maxPrice = midPrice * (1 + percent / 100);
+
+    return [...this.asks.entries()]
+      .filter(([price]) => price >= midPrice && price <= maxPrice)
+      .sort((a, b) => a[0] - b[0]);
+  }
+
   private applyLevels(book: Map<number, number>, levels: OrderBookLevelRaw[]) {
     for (const [priceStr, qtyStr] of levels) {
       const price = Number(priceStr);
