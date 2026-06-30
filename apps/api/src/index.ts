@@ -1,4 +1,4 @@
-import { TOP_SYMBOLS } from "./config/symbols.js";
+import { loadTrackedSymbols } from "./config/symbols.js";
 import { BinanceAdapter } from "./exchanges/binance.adapter.js";
 import { OrderBookEngine } from "./orderbook/orderbook.engine.js";
 import { calculateOrderBookMetrics } from "./analytics/orderbook.metrics.js";
@@ -14,6 +14,8 @@ type SymbolRuntime = {
   lastUpdateId: number;
   buffer: DepthUpdate[];
 };
+
+const TOP_SYMBOLS = await loadTrackedSymbols();
 
 const runtimes = new Map<string, SymbolRuntime>();
 

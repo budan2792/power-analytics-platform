@@ -2,17 +2,17 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import {
-  createChart,
   CandlestickSeries,
-  LineSeries,
+  createChart,
   HistogramSeries,
+  LineSeries,
   type IChartApi,
   type ISeriesApi,
-  type UTCTimestamp,
+  type LogicalRange,
 } from "lightweight-charts";
 import type { MarketHistoryPoint } from "../../hooks/useMarketHistory";
 import type { HistoryChartType, HistoryTimeframe } from "../../types/chart";
-import { HISTORY_TIMEFRAMES } from "../../types/chart";
+import { aggregateHistoryByTimeframe } from "../../lib/chart/history-aggregation";
 
 type Props = {
   symbol: string | null;
@@ -20,70 +20,9 @@ type Props = {
   loading: boolean;
   timeframe: HistoryTimeframe;
   chartType: HistoryChartType;
+  visibleRange: LogicalRange | null;
+  onVisibleRangeChange: (range: LogicalRange | null) => void;
 };
-
-type AggregatedCandle = {
-  time: UTCTimestamp;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  buyValue: number;
-  sellValue: number;
-  totalValue: number;
-};
-
-function getTimeframeMinutes(timeframe: HistoryTimeframe) {
-  return (
-    HISTORY_TIMEFRAMES.find((option) => option.value === timeframe)?.minutes ??
-    1
-  );
-}
-
-function toBucketStartMs(dateMs: number, timeframeMinutes: number) {
-  const bucketMs = timeframeMinutes * 60 * 1000;
-  return Math.floor(dateMs / bucketMs) * bucketMs;
-}
-
-function aggregateHistory(
-  data: MarketHistoryPoint[],
-  timeframe: HistoryTimeframe
-): AggregatedCandle[] {
-  const timeframeMinutes = getTimeframeMinutes(timeframe);
-  const buckets = new Map<number, AggregatedCandle>();
-
-  for (const row of data) {
-    const dateMs = new Date(row.minute).getTime();
-    const bucketStartMs = toBucketStartMs(dateMs, timeframeMinutes);
-    const bucketTime = Math.floor(bucketStartMs / 1000) as UTCTimestamp;
-
-    const existing = buckets.get(bucketStartMs);
-
-    if (!existing) {
-      buckets.set(bucketStartMs, {
-        time: bucketTime,
-        open: row.openPrice,
-        high: row.highPrice,
-        low: row.lowPrice,
-        close: row.closePrice,
-        buyValue: row.avgBuyValueUSDT,
-        sellValue: row.avgSellValueUSDT,
-        totalValue: row.avgTotalValueUSDT,
-      });
-
-      continue;
-    }
-
-    existing.high = Math.max(existing.high, row.highPrice);
-    existing.low = Math.min(existing.low, row.lowPrice);
-    existing.close = row.closePrice;
-    existing.buyValue += row.avgBuyValueUSDT;
-    existing.sellValue += row.avgSellValueUSDT;
-    existing.totalValue += row.avgTotalValueUSDT;
-  }
-
-  return [...buckets.values()].sort((a, b) => Number(a.time) - Number(b.time));
-}
 
 export function HistoricalMainChart({
   symbol,
@@ -91,16 +30,19 @@ export function HistoricalMainChart({
   loading,
   timeframe,
   chartType,
+  visibleRange,
+  onVisibleRangeChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const mainSeriesRef = useRef<ISeriesApi<"Candlestick"> | ISeriesApi<"Line"> | null>(
-    null
-  );
+  const mainSeriesRef = useRef<
+    ISeriesApi<"Candlestick"> | ISeriesApi<"Line"> | null
+  >(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const isSyncingRef = useRef(false);
 
   const candles = useMemo(
-    () => aggregateHistory(data, timeframe),
+    () => aggregateHistoryByTimeframe(data, timeframe),
     [data, timeframe]
   );
 
@@ -128,15 +70,12 @@ export function HistoricalMainChart({
         timeVisible: true,
         secondsVisible: false,
       },
-      crosshair: {
-        mode: 1,
-      },
     });
 
     chartRef.current = chart;
 
     if (chartType === "candles") {
-      const series = chart.addSeries(CandlestickSeries, {
+      mainSeriesRef.current = chart.addSeries(CandlestickSeries, {
         upColor: "#22c55e",
         downColor: "#ef4444",
         borderUpColor: "#22c55e",
@@ -144,22 +83,15 @@ export function HistoricalMainChart({
         wickUpColor: "#22c55e",
         wickDownColor: "#ef4444",
       });
-
-      mainSeriesRef.current = series;
     } else {
-      const series = chart.addSeries(LineSeries, {
+      mainSeriesRef.current = chart.addSeries(LineSeries, {
         color: "#facc15",
         lineWidth: 2,
       });
-
-      mainSeriesRef.current = series;
     }
 
     const volumeSeries = chart.addSeries(HistogramSeries, {
-      color: "rgba(34, 211, 238, 0.45)",
-      priceFormat: {
-        type: "volume",
-      },
+      priceFormat: { type: "volume" },
       priceScaleId: "",
     });
 
@@ -171,6 +103,11 @@ export function HistoricalMainChart({
     });
 
     volumeSeriesRef.current = volumeSeries;
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (isSyncingRef.current) return;
+      onVisibleRangeChange(range);
+    });
 
     const resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -190,7 +127,7 @@ export function HistoricalMainChart({
       mainSeriesRef.current = null;
       volumeSeriesRef.current = null;
     };
-  }, [chartType]);
+  }, [chartType, onVisibleRangeChange]);
 
   useEffect(() => {
     if (!mainSeriesRef.current || !volumeSeriesRef.current || !chartRef.current) {
@@ -231,8 +168,21 @@ export function HistoricalMainChart({
       }))
     );
 
-    chartRef.current.timeScale().fitContent();
-  }, [candles, chartType]);
+    if (!visibleRange) {
+      chartRef.current.timeScale().fitContent();
+    }
+  }, [candles, chartType, visibleRange]);
+
+  useEffect(() => {
+    if (!chartRef.current || !visibleRange) return;
+
+    isSyncingRef.current = true;
+    chartRef.current.timeScale().setVisibleLogicalRange(visibleRange);
+
+    queueMicrotask(() => {
+      isSyncingRef.current = false;
+    });
+  }, [visibleRange]);
 
   const latest = candles[candles.length - 1];
 
@@ -246,7 +196,7 @@ export function HistoricalMainChart({
 
           <p className="text-sm text-slate-400">
             {chartType === "candles" ? "Japanese candles" : "Line chart"} ·{" "}
-            {timeframe.toUpperCase()} · aggregated from minute snapshots
+            {timeframe.toUpperCase()} · synchronized indicators
           </p>
         </div>
 

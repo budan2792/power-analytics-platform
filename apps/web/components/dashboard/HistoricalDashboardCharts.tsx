@@ -1,59 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import {
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { useCallback, useState } from "react";
+import type { LogicalRange } from "lightweight-charts";
 import type { MarketHistoryPoint } from "../../hooks/useMarketHistory";
-import type { HistoryChartType, HistoryTimeframe } from "../../types/chart";
+import type { MarketAnalyticsPoint } from "../../hooks/useMarketAnalytics";
+import type {
+  HistoricalIndicator,
+  HistoryChartType,
+  HistoryTimeframe,
+} from "../../types/chart";
 import { HistoryChartToolbar } from "./HistoryChartToolbar";
 import { HistoricalMainChart } from "./HistoricalMainChart";
+import { HistoryIndicatorSelector } from "./HistoryIndicatorSelector";
+import { HistoricalIndicatorsPanel } from "./HistoricalIndicatorsPanel";
 
 type Props = {
   symbol: string | null;
-  data: MarketHistoryPoint[];
-  loading: boolean;
+  historyData: MarketHistoryPoint[];
+  analyticsData: MarketAnalyticsPoint[];
+  historyLoading: boolean;
+  analyticsLoading: boolean;
 };
 
-function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString();
-}
-
-function formatUsd(value: number) {
-  return `$${Math.round(value).toLocaleString()}`;
-}
-
-export function HistoricalDashboardCharts({ symbol, data, loading }: Props) {
+export function HistoricalDashboardCharts({
+  symbol,
+  historyData,
+  analyticsData,
+  historyLoading,
+  analyticsLoading,
+}: Props) {
   const [timeframe, setTimeframe] = useState<HistoryTimeframe>("1m");
   const [chartType, setChartType] = useState<HistoryChartType>("candles");
+  const [visibleRange, setVisibleRange] = useState<LogicalRange | null>(null);
 
-  const chartData = data.map((row) => {
-    const depth1 = row.depthZones?.find((z) => z.percent === 1);
-    const depth3 = row.depthZones?.find((z) => z.percent === 3);
-    const depth5 = row.depthZones?.find((z) => z.percent === 5);
-    const depth10 = row.depthZones?.find((z) => z.percent === 10);
+  const [indicators, setIndicators] = useState<HistoricalIndicator[]>([
+    "orders",
+    "depth",
+    "imbalance",
+  ]);
 
-    return {
-      time: formatTime(row.minute),
+  const loading = historyLoading || analyticsLoading;
 
-      buyValue: row.avgBuyValueUSDT,
-      sellValue: row.avgSellValueUSDT,
-
-      depth1: depth1?.totalValue ?? 0,
-      depth3: depth3?.totalValue ?? 0,
-      depth5: depth5?.totalValue ?? 0,
-      depth10: depth10?.totalValue ?? 0,
-
-      imbalance: Number(row.avgImbalancePercent.toFixed(2)),
-    };
-  });
+  const handleVisibleRangeChange = useCallback((range: LogicalRange | null) => {
+    setVisibleRange(range);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -61,201 +51,50 @@ export function HistoricalDashboardCharts({ symbol, data, loading }: Props) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold text-white">
-              Historical Market Charts
+              Historical Chart Terminal
             </h2>
             <p className="text-sm text-slate-400">
-              Price, orders, depth and imbalance from database
+              Main price chart with synchronized timeframe indicators
             </p>
           </div>
 
           <HistoryChartToolbar
             timeframe={timeframe}
             chartType={chartType}
-            onTimeframeChange={setTimeframe}
+            onTimeframeChange={(nextTimeframe) => {
+              setVisibleRange(null);
+              setTimeframe(nextTimeframe);
+            }}
             onChartTypeChange={setChartType}
+          />
+        </div>
+
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <HistoryIndicatorSelector
+            selected={indicators}
+            onChange={setIndicators}
           />
         </div>
       </div>
 
       <HistoricalMainChart
         symbol={symbol}
-        data={data}
+        data={historyData}
         loading={loading}
         timeframe={timeframe}
         chartType={chartType}
+        visibleRange={visibleRange}
+        onVisibleRangeChange={handleVisibleRangeChange}
       />
 
-      <div className="grid gap-4 2xl:grid-cols-2">
-        <div className="rounded-2xl border border-cyan-400/20 bg-white/5 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-white">
-              Buy / Sell Orders
-            </h2>
-            <p className="text-sm text-slate-400">
-              Average buy and sell order book value per minute
-            </p>
-          </div>
-
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="time" hide />
-                <YAxis stroke="#94a3b8" tickFormatter={formatUsd} />
-
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#020617",
-                    border: "1px solid rgba(34, 211, 238, 0.35)",
-                    borderRadius: "12px",
-                    color: "#ffffff",
-                  }}
-                  formatter={(value, name) => [
-                    formatUsd(Number(value)),
-                    name === "buyValue" ? "Buy orders" : "Sell orders",
-                  ]}
-                />
-
-                <Legend />
-
-                <Line
-                  type="monotone"
-                  dataKey="buyValue"
-                  name="Buy orders"
-                  stroke="#22c55e"
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-
-                <Line
-                  type="monotone"
-                  dataKey="sellValue"
-                  name="Sell orders"
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-cyan-400/20 bg-white/5 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-white">
-              Order Depth Volume
-            </h2>
-            <p className="text-sm text-slate-400">
-              Historical liquidity depth by price range
-            </p>
-          </div>
-
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="time" hide />
-                <YAxis stroke="#94a3b8" tickFormatter={formatUsd} />
-
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#020617",
-                    border: "1px solid rgba(34, 211, 238, 0.35)",
-                    borderRadius: "12px",
-                    color: "#ffffff",
-                  }}
-                  formatter={(value) => [formatUsd(Number(value)), "Depth"]}
-                />
-
-                <Legend />
-
-                <Line
-                  type="monotone"
-                  dataKey="depth1"
-                  name="0-1%"
-                  stroke="#22d3ee"
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-
-                <Line
-                  type="monotone"
-                  dataKey="depth3"
-                  name="1-3%"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-
-                <Line
-                  type="monotone"
-                  dataKey="depth5"
-                  name="3-5%"
-                  stroke="#a855f7"
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-
-                <Line
-                  type="monotone"
-                  dataKey="depth10"
-                  name="5-10%"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  dot={false}
-                  isAnimationActive={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-cyan-400/20 bg-white/5 p-5 shadow-2xl shadow-cyan-500/10 backdrop-blur">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-white">
-            Imbalance History
-          </h2>
-          <p className="text-sm text-slate-400">
-            Buy/Sell order book imbalance
-          </p>
-        </div>
-
-        <div className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="time" hide />
-              <YAxis stroke="#94a3b8" domain={["auto", "auto"]} />
-
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#020617",
-                  border: "1px solid rgba(34, 211, 238, 0.35)",
-                  borderRadius: "12px",
-                  color: "#ffffff",
-                }}
-                formatter={(value) => [`${value}%`, "Imbalance"]}
-              />
-
-              <Line
-                type="monotone"
-                dataKey="imbalance"
-                name="Imbalance"
-                stroke="#22d3ee"
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      <HistoricalIndicatorsPanel
+        historyData={historyData}
+        analyticsData={analyticsData}
+        indicators={indicators}
+        timeframe={timeframe}
+        visibleRange={visibleRange}
+        onVisibleRangeChange={handleVisibleRangeChange}
+      />
     </div>
   );
 }

@@ -1,13 +1,10 @@
-// Топ символи, які будемо аналізувати
-export const TOP_SYMBOLS = [
-  "BTCUSDT",
-  "ETHUSDT",
-  "BNBUSDT",
-  "SOLUSDT",
-  "XRPUSDT",
-  "ADAUSDT",
-  "DOGEUSDT",
-  "AVAXUSDT",
-  "LINKUSDT",
-  "TRXUSDT",
-];
+import { loadBinanceSpotSymbols } from "../exchanges/binance.symbols.js";
+
+export async function loadTrackedSymbols() {
+  const symbols = await loadBinanceSpotSymbols();
+
+  console.log(`Loaded ${symbols.length} symbols`);
+  console.log(symbols.join(", "));
+
+  return symbols;
+}

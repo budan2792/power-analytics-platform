@@ -17,7 +17,6 @@ import { WatchlistPanel } from "../components/dashboard/WatchlistPanel";
 import { DashboardModeTabs } from "../components/dashboard/DashboardModeTabs";
 import { HistoricalDashboardCharts } from "../components/dashboard/HistoricalDashboardCharts";
 import { HistoryRangeSelector } from "../components/dashboard/HistoryRangeSelector";
-import { HistoricalAnalyticsPanel } from "../components/dashboard/HistoricalAnalyticsPanel";
 
 export default function HomePage() {
   const { rows, connected, imbalanceHistory, symbolHistory } =
@@ -107,19 +106,13 @@ export default function HomePage() {
                 </div>
               </>
             ) : (
-              <>
-                <HistoricalDashboardCharts
-                  symbol={selected?.symbol ?? null}
-                  data={historyData}
-                  loading={historyLoading}
-                />
-
-                <HistoricalAnalyticsPanel
-                  symbol={selected?.symbol ?? null}
-                  data={analyticsData}
-                  loading={analyticsLoading}
-                />
-              </>
+              <HistoricalDashboardCharts
+                symbol={selected?.symbol ?? null}
+                historyData={historyData}
+                analyticsData={analyticsData}
+                historyLoading={historyLoading}
+                analyticsLoading={analyticsLoading}
+              />
             )}
           </div>
         </section>
