@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { DashboardMode } from "../types/dashboard";
 import { useOrderBookMetrics } from "../hooks/useOrderBookMetrics";
+import { useMarketHistory } from "../hooks/useMarketHistory";
 import { DashboardStats } from "../components/dashboard/DashboardStats";
 import { ImbalanceChart } from "../components/dashboard/ImbalanceChart";
 import { LiquidityBarChart } from "../components/dashboard/LiquidityBarChart";
@@ -11,13 +13,14 @@ import { DepthZonesPanel } from "../components/dashboard/DepthZonesPanel";
 import { DepthZonesChart } from "../components/dashboard/DepthZonesChart";
 import { OrderBookTable } from "../components/dashboard/OrderBookTable";
 import { WatchlistPanel } from "../components/dashboard/WatchlistPanel";
-import { useMarketHistory } from "../hooks/useMarketHistory";
+import { DashboardModeTabs } from "../components/dashboard/DashboardModeTabs";
 import { HistoricalDashboardCharts } from "../components/dashboard/HistoricalDashboardCharts";
 
 export default function HomePage() {
   const { rows, connected, imbalanceHistory, symbolHistory } =
     useOrderBookMetrics();
 
+  const [mode, setMode] = useState<DashboardMode>("live");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [selectedDepth, setSelectedDepth] = useState(1);
 
@@ -29,8 +32,8 @@ export default function HomePage() {
   const selectedHistory = selected ? symbolHistory[selected.symbol] ?? [] : [];
 
   const { data: historyData, loading: historyLoading } = useMarketHistory(
-  selected?.symbol ?? null,
-  240
+    selected?.symbol ?? null,
+    300
   );
 
   return (
@@ -43,11 +46,13 @@ export default function HomePage() {
                 Power Analytics Platform
               </h1>
               <p className="text-sm text-slate-400">
-                Live CEX liquidity and order book analytics terminal
+                Live and historical CEX liquidity analytics terminal
               </p>
             </div>
 
             <div className="flex items-center gap-3">
+              <DashboardModeTabs mode={mode} onChange={setMode} />
+
               <div className="rounded-full border border-cyan-400/30 px-4 py-2 text-sm">
                 Binance Spot
               </div>
@@ -59,7 +64,6 @@ export default function HomePage() {
           </div>
         </header>
 
-        {/* Top terminal layout: watchlist + wide analytics area */}
         <section className="grid flex-1 gap-4 p-4 xl:grid-cols-[320px_minmax(0,1fr)]">
           <WatchlistPanel
             rows={rows}
@@ -68,49 +72,55 @@ export default function HomePage() {
           />
 
           <div className="min-w-0 space-y-4">
-            <DashboardStats rows={rows} />
+            {mode === "live" ? (
+              <>
+                <DashboardStats rows={rows} />
 
-            <div className="grid gap-4 2xl:grid-cols-2">
-              <ImbalanceChart data={imbalanceHistory} />
+                <div className="grid gap-4 2xl:grid-cols-2">
+                  <ImbalanceChart data={imbalanceHistory} />
 
-              <SymbolImbalanceChart
+                  <SymbolImbalanceChart
+                    symbol={selected?.symbol ?? null}
+                    data={selectedHistory}
+                  />
+                </div>
+
+                <div className="grid gap-4 2xl:grid-cols-2">
+                  <LiquidityBarChart rows={rows} />
+                  <DepthZonesChart zones={selected?.depthZones ?? []} />
+                </div>
+              </>
+            ) : (
+              <HistoricalDashboardCharts
                 symbol={selected?.symbol ?? null}
-                data={selectedHistory}
+                data={historyData}
+                loading={historyLoading}
               />
-            </div>
-
-           <HistoricalDashboardCharts
-              symbol={selected?.symbol ?? null}
-              data={historyData}
-              loading={historyLoading}
-            />
-
-            <div className="grid gap-4 2xl:grid-cols-2">
-              <LiquidityBarChart rows={rows} />
-              <DepthZonesChart zones={selected?.depthZones ?? []} />
-            </div>
+            )}
           </div>
         </section>
 
-        {/* Selected symbol details moved below charts */}
-        <section className="grid gap-4 p-4 pt-0 xl:grid-cols-2">
-          <SymbolDetailsPanel selected={selected} />
+        {mode === "live" && (
+          <>
+            <section className="grid gap-4 p-4 pt-0 xl:grid-cols-2">
+              <SymbolDetailsPanel selected={selected} />
 
-          <DepthZonesPanel
-            zones={selected?.depthZones ?? []}
-            selectedDepth={selectedDepth}
-            onSelectDepth={setSelectedDepth}
-          />
-        </section>
+              <DepthZonesPanel
+                zones={selected?.depthZones ?? []}
+                selectedDepth={selectedDepth}
+                onSelectDepth={setSelectedDepth}
+              />
+            </section>
 
-        {/* Bottom data tables */}
-       <section className="p-4 pt-0">
-        <OrderBookTable
-          rows={rows}
-          selectedSymbol={selected?.symbol ?? null}
-          onSelectSymbol={setSelectedSymbol}
-        />
-      </section>
+            <section className="p-4 pt-0">
+              <OrderBookTable
+                rows={rows}
+                selectedSymbol={selected?.symbol ?? null}
+                onSelectSymbol={setSelectedSymbol}
+              />
+            </section>
+          </>
+        )}
       </div>
     </main>
   );
