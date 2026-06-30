@@ -1,4 +1,5 @@
 import { prisma } from "../database/prisma.js";
+import { MarketAnalyticsEngine } from "../analytics/engine/market-analytics.engine.js";
 
 type DepthZoneMetric = {
   percent: number;
@@ -66,6 +67,7 @@ type MinuteBucket = {
 
 export class MinuteAggregator {
   private buckets = new Map<string, MinuteBucket>();
+  private analyticsEngine = new MarketAnalyticsEngine();
 
   addSample(exchange: string, row: MarketMetricRow) {
     const minute = this.getMinuteStart(new Date());
@@ -133,7 +135,7 @@ export class MinuteAggregator {
     const prices = bucket.prices;
     const last = bucket.lastState;
 
-    await prisma.marketMinuteSnapshot.upsert({
+    const snapshot = await prisma.marketMinuteSnapshot.upsert({
       where: {
         exchange_symbol_minute: {
           exchange: bucket.exchange,
@@ -180,6 +182,11 @@ export class MinuteAggregator {
         lastState: last as object,
       },
     });
+
+
+   await this.analyticsEngine.calculateForSnapshot(snapshot);
+
+
 
     console.log(
       `[DB] Saved ${bucket.exchange} ${bucket.symbol} ${bucket.minute.toISOString()} (${bucket.prices.length} samples)`

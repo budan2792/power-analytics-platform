@@ -20,23 +20,23 @@ model MarketMinuteSnapshot {
   closePrice Float
   avgPrice   Float
 
-  avgBuyValueUSDT        Float
-  avgSellValueUSDT       Float
-  avgTotalValueUSDT      Float
-  avgDiffUSDT            Float
-  avgImbalancePercent    Float
-  avgSpread              Float
+  avgBuyValueUSDT       Float
+  avgSellValueUSDT      Float
+  avgTotalValueUSDT     Float
+  avgDiffUSDT           Float
+  avgImbalancePercent   Float
+  avgSpread             Float
 
   minImbalancePercent Float
   maxImbalancePercent Float
 
-  largestBuyWallValueUSDT     Float @default(0)
-  largestBuyWallPrice         Float @default(0)
-  largestBuyWallDistancePct   Float @default(0)
+  largestBuyWallValueUSDT    Float @default(0)
+  largestBuyWallPrice        Float @default(0)
+  largestBuyWallDistancePct  Float @default(0)
 
-  largestSellWallValueUSDT    Float @default(0)
-  largestSellWallPrice        Float @default(0)
-  largestSellWallDistancePct  Float @default(0)
+  largestSellWallValueUSDT   Float @default(0)
+  largestSellWallPrice       Float @default(0)
+  largestSellWallDistancePct Float @default(0)
 
   avgBidLevels Int @default(0)
   avgAskLevels Int @default(0)
@@ -45,6 +45,61 @@ model MarketMinuteSnapshot {
 
   depthZones Json
   lastState   Json
+
+  analytics MarketMinuteAnalytics?
+
+  createdAt DateTime @default(now())
+
+  @@unique([exchange, symbol, minute])
+  @@index([symbol, minute])
+  @@index([exchange, minute])
+}
+
+model MarketMinuteAnalytics {
+  id String @id @default(cuid())
+
+  snapshotId String @unique
+  snapshot   MarketMinuteSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  exchange String
+  symbol   String
+  minute   DateTime
+
+  priceChangeUSDT Float @default(0)
+  priceChangePct  Float @default(0)
+
+  buyLiquidityChangeUSDT  Float @default(0)
+  buyLiquidityChangePct   Float @default(0)
+
+  sellLiquidityChangeUSDT Float @default(0)
+  sellLiquidityChangePct  Float @default(0)
+
+  totalLiquidityChangeUSDT Float @default(0)
+  totalLiquidityChangePct  Float @default(0)
+
+  imbalanceChangePct Float @default(0)
+  spreadChangeUSDT   Float @default(0)
+  spreadChangePct    Float @default(0)
+
+  largestBuyWallChangeUSDT  Float @default(0)
+  largestBuyWallChangePct   Float @default(0)
+
+  largestSellWallChangeUSDT Float @default(0)
+  largestSellWallChangePct  Float @default(0)
+
+  depth1ChangeUSDT  Float @default(0)
+  depth3ChangeUSDT  Float @default(0)
+  depth5ChangeUSDT  Float @default(0)
+  depth10ChangeUSDT Float @default(0)
+  depth30ChangeUSDT Float @default(0)
+
+  buyPressureScore       Float @default(0)
+  sellPressureScore      Float @default(0)
+  liquidityFlowScore     Float @default(0)
+  volatilityScore        Float @default(0)
+  wallActivityScore      Float @default(0)
+
+  summary Json
 
   createdAt DateTime @default(now())
 
