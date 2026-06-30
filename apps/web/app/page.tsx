@@ -15,6 +15,7 @@ import { OrderBookTable } from "../components/dashboard/OrderBookTable";
 import { WatchlistPanel } from "../components/dashboard/WatchlistPanel";
 import { DashboardModeTabs } from "../components/dashboard/DashboardModeTabs";
 import { HistoricalDashboardCharts } from "../components/dashboard/HistoricalDashboardCharts";
+import { HistoryRangeSelector } from "../components/dashboard/HistoryRangeSelector";
 
 export default function HomePage() {
   const { rows, connected, imbalanceHistory, symbolHistory } =
@@ -23,6 +24,7 @@ export default function HomePage() {
   const [mode, setMode] = useState<DashboardMode>("live");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [selectedDepth, setSelectedDepth] = useState(1);
+  const [historyLimit, setHistoryLimit] = useState(300);
 
   const selected = useMemo(() => {
     if (!selectedSymbol) return rows[0] ?? null;
@@ -33,7 +35,7 @@ export default function HomePage() {
 
   const { data: historyData, loading: historyLoading } = useMarketHistory(
     selected?.symbol ?? null,
-    300
+    historyLimit
   );
 
   return (
@@ -52,6 +54,13 @@ export default function HomePage() {
 
             <div className="flex items-center gap-3">
               <DashboardModeTabs mode={mode} onChange={setMode} />
+
+              {mode === "history" && (
+                <HistoryRangeSelector
+                  limit={historyLimit}
+                  onChange={setHistoryLimit}
+                />
+              )}
 
               <div className="rounded-full border border-cyan-400/30 px-4 py-2 text-sm">
                 Binance Spot
