@@ -20,15 +20,26 @@ model MarketMinuteSnapshot {
   closePrice Float
   avgPrice   Float
 
-  avgBuyValueUSDT      Float
-  avgSellValueUSDT     Float
-  avgTotalValueUSDT    Float
-  avgDiffUSDT          Float
-  avgImbalancePercent  Float
-  avgSpread            Float
+  avgBuyValueUSDT        Float
+  avgSellValueUSDT       Float
+  avgTotalValueUSDT      Float
+  avgDiffUSDT            Float
+  avgImbalancePercent    Float
+  avgSpread              Float
 
   minImbalancePercent Float
   maxImbalancePercent Float
+
+  largestBuyWallValueUSDT     Float @default(0)
+  largestBuyWallPrice         Float @default(0)
+  largestBuyWallDistancePct   Float @default(0)
+
+  largestSellWallValueUSDT    Float @default(0)
+  largestSellWallPrice        Float @default(0)
+  largestSellWallDistancePct  Float @default(0)
+
+  avgBidLevels Int @default(0)
+  avgAskLevels Int @default(0)
 
   samplesCount Int
 

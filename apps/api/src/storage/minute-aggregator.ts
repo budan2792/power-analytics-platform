@@ -1,17 +1,45 @@
 import { prisma } from "../database/prisma.js";
 
+type DepthZoneMetric = {
+  percent: number;
+  bidLevels: number;
+  askLevels: number;
+  buyVolume: number;
+  sellVolume: number;
+  buyValue: number;
+  sellValue: number;
+  totalValue: number;
+  diffValue: number;
+  imbalancePercent: number;
+};
+
 type MarketMetricRow = {
   symbol: string;
   price: number;
+
+  bidLevels: number;
+  askLevels: number;
+
   buyValueUSDT: number;
   sellValueUSDT: number;
   totalValueUSDT: number;
   diffUSDT: number;
+
   imbalancePercent: number;
   spread: number;
+
   bestBid: number;
   bestAsk: number;
-  depthZones: unknown;
+
+  largestBuyWallValueUSDT: number;
+  largestBuyWallPrice: number;
+  largestBuyWallDistancePct: number;
+
+  largestSellWallValueUSDT: number;
+  largestSellWallPrice: number;
+  largestSellWallDistancePct: number;
+
+  depthZones: DepthZoneMetric[];
 };
 
 type MinuteBucket = {
@@ -26,6 +54,12 @@ type MinuteBucket = {
   diffValues: number[];
   imbalances: number[];
   spreads: number[];
+
+  bidLevels: number[];
+  askLevels: number[];
+
+  largestBuyWallValues: number[];
+  largestSellWallValues: number[];
 
   lastState: MarketMetricRow;
 };
@@ -44,6 +78,7 @@ export class MinuteAggregator {
         exchange,
         symbol: row.symbol,
         minute,
+
         prices: [],
         buyValues: [],
         sellValues: [],
@@ -51,6 +86,13 @@ export class MinuteAggregator {
         diffValues: [],
         imbalances: [],
         spreads: [],
+
+        bidLevels: [],
+        askLevels: [],
+
+        largestBuyWallValues: [],
+        largestSellWallValues: [],
+
         lastState: row,
       };
 
@@ -64,6 +106,13 @@ export class MinuteAggregator {
     bucket.diffValues.push(row.diffUSDT);
     bucket.imbalances.push(row.imbalancePercent);
     bucket.spreads.push(row.spread);
+
+    bucket.bidLevels.push(row.bidLevels);
+    bucket.askLevels.push(row.askLevels);
+
+    bucket.largestBuyWallValues.push(row.largestBuyWallValueUSDT);
+    bucket.largestSellWallValues.push(row.largestSellWallValueUSDT);
+
     bucket.lastState = row;
   }
 
@@ -71,7 +120,6 @@ export class MinuteAggregator {
     const currentMinute = this.getMinuteStart(new Date());
 
     for (const [key, bucket] of this.buckets.entries()) {
-      // Поточну хвилину ще не записуємо, бо вона ще збирається
       if (bucket.minute.getTime() >= currentMinute.getTime()) {
         continue;
       }
@@ -83,6 +131,7 @@ export class MinuteAggregator {
 
   private async saveBucket(bucket: MinuteBucket) {
     const prices = bucket.prices;
+    const last = bucket.lastState;
 
     await prisma.marketMinuteSnapshot.upsert({
       where: {
@@ -114,15 +163,26 @@ export class MinuteAggregator {
         minImbalancePercent: Math.min(...bucket.imbalances),
         maxImbalancePercent: Math.max(...bucket.imbalances),
 
+        largestBuyWallValueUSDT: Math.max(...bucket.largestBuyWallValues),
+        largestBuyWallPrice: last.largestBuyWallPrice,
+        largestBuyWallDistancePct: last.largestBuyWallDistancePct,
+
+        largestSellWallValueUSDT: Math.max(...bucket.largestSellWallValues),
+        largestSellWallPrice: last.largestSellWallPrice,
+        largestSellWallDistancePct: last.largestSellWallDistancePct,
+
+        avgBidLevels: Math.round(this.avg(bucket.bidLevels)),
+        avgAskLevels: Math.round(this.avg(bucket.askLevels)),
+
         samplesCount: prices.length,
 
-        depthZones: bucket.lastState.depthZones as object,
-        lastState: bucket.lastState as object,
+        depthZones: last.depthZones as object,
+        lastState: last as object,
       },
     });
 
     console.log(
-      `Saved minute snapshot: ${bucket.exchange} ${bucket.symbol} ${bucket.minute.toISOString()}`
+      `[DB] Saved ${bucket.exchange} ${bucket.symbol} ${bucket.minute.toISOString()} (${bucket.prices.length} samples)`
     );
   }
 

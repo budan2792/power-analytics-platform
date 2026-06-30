@@ -3,10 +3,9 @@ import { BinanceAdapter } from "./exchanges/binance.adapter.js";
 import { OrderBookEngine } from "./orderbook/orderbook.engine.js";
 import { calculateOrderBookMetrics } from "./analytics/orderbook.metrics.js";
 import { ApiServer } from "./server/api.server.js";
-import type { DepthUpdate } from "./types/orderbook.types.js";
 import { MinuteAggregator } from "./storage/minute-aggregator.js";
+import type { DepthUpdate } from "./types/orderbook.types.js";
 
-// Стан для одного символу
 type SymbolRuntime = {
   symbol: string;
   engine: OrderBookEngine;
@@ -16,15 +15,13 @@ type SymbolRuntime = {
   buffer: DepthUpdate[];
 };
 
-// Усі активні символи
 const runtimes = new Map<string, SymbolRuntime>();
 
-// API для майбутнього frontend dashboard
 const apiServer = new ApiServer(4000);
 const minuteAggregator = new MinuteAggregator();
+
 await apiServer.start();
 
-// Запускаємо Binance adapter для кожного символу
 for (const symbol of TOP_SYMBOLS) {
   const engine = new OrderBookEngine();
 
@@ -43,13 +40,11 @@ for (const symbol of TOP_SYMBOLS) {
     onOpen: async () => {
       console.log(`${symbol}: WebSocket connected`);
 
-      // Завантажуємо початковий стакан
       const snapshot = await adapter.loadSnapshot();
 
       runtime.lastUpdateId = snapshot.lastUpdateId;
       runtime.engine.applySnapshot(snapshot.bids, snapshot.asks);
 
-      // Застосовуємо оновлення, які прийшли до snapshot
       const validUpdates = runtime.buffer.filter(
         (u) => u.u > runtime.lastUpdateId
       );
@@ -64,18 +59,15 @@ for (const symbol of TOP_SYMBOLS) {
     },
 
     onUpdate: (update) => {
-      // До snapshot — складаємо updates у буфер
       if (!runtime.snapshotLoaded) {
         runtime.buffer.push(update);
         return;
       }
 
-      // Старі updates ігноруємо
       if (update.u <= runtime.lastUpdateId) {
         return;
       }
 
-      // Оновлюємо локальний стакан
       runtime.engine.applyUpdate(update.b, update.a);
       runtime.lastUpdateId = update.u;
     },
@@ -91,11 +83,9 @@ for (const symbol of TOP_SYMBOLS) {
   adapter.connect();
 }
 
-// Раз на секунду рахуємо метрики і віддаємо їх у frontend
 setInterval(async () => {
   const rows = [];
 
-  // Йдемо саме по TOP_SYMBOLS, щоб порядок завжди був стабільний
   for (const symbol of TOP_SYMBOLS) {
     const runtime = runtimes.get(symbol);
 
@@ -106,31 +96,58 @@ setInterval(async () => {
     rows.push({
       symbol: m.symbol,
       price: Number(m.price.toFixed(8)),
+
+      bidLevels: m.bidLevels,
+      askLevels: m.askLevels,
+
       buyValueUSDT: Number(m.buyValue.toFixed(2)),
       sellValueUSDT: Number(m.sellValue.toFixed(2)),
       totalValueUSDT: Number((m.buyValue + m.sellValue).toFixed(2)),
       diffUSDT: Number(m.valueDifference.toFixed(2)),
+
       imbalancePercent: Number(m.imbalancePercent.toFixed(2)),
       spread: Number(m.spread.toFixed(6)),
+
       bestBid: m.bestBid,
       bestAsk: m.bestAsk,
+
+      largestBuyWallValueUSDT: Number(m.largestBuyWall.valueUSDT.toFixed(2)),
+      largestBuyWallPrice: m.largestBuyWall.price,
+      largestBuyWallDistancePct: Number(
+        m.largestBuyWallDistancePct.toFixed(4)
+      ),
+
+      largestSellWallValueUSDT: Number(m.largestSellWall.valueUSDT.toFixed(2)),
+      largestSellWallPrice: m.largestSellWall.price,
+      largestSellWallDistancePct: Number(
+        m.largestSellWallDistancePct.toFixed(4)
+      ),
+
       depthZones: m.depthZones,
     });
   }
 
   console.clear();
-  console.table(rows);
+  console.table(
+    rows.map((row) => ({
+      symbol: row.symbol,
+      price: row.price,
+      buyValueUSDT: row.buyValueUSDT,
+      sellValueUSDT: row.sellValueUSDT,
+      imbalance: `${row.imbalancePercent}%`,
+      buyWall: row.largestBuyWallValueUSDT,
+      sellWall: row.largestSellWallValueUSDT,
+    }))
+  );
 
-  // Надсилаємо live-дані у frontend у стабільному порядку
+  for (const row of rows) {
+    minuteAggregator.addSample("binance_spot", row);
+  }
+
+  await minuteAggregator.flushCompletedBuckets();
+
   apiServer.broadcast({
     type: "orderbook_metrics",
     data: rows,
   });
-
-  for (const row of rows) {
-  minuteAggregator.addSample("binance_spot", row);
-}
-
-  await minuteAggregator.flushCompletedBuckets();
-
 }, 1000);
