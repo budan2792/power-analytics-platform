@@ -15,12 +15,11 @@ export class ApiServer {
   constructor(private port = 4000) {}
 
   async start() {
-
     await this.app.register(cors, {
       origin: true,
     });
 
-    // Простий health check
+    // Перевірка, що API працює
     this.app.get("/health", async () => {
       return {
         status: "ok",
@@ -28,14 +27,13 @@ export class ApiServer {
       };
     });
 
-
-    // Історичні хвилинні дані по символу
+    // Історичні хвилинні snapshot-дані
     this.app.get<{
       Params: { symbol: string };
       Querystring: { limit?: string };
     }>("/history/:symbol", async (request) => {
       const symbol = request.params.symbol.toUpperCase();
-      const limit = Math.min(Number(request.query.limit ?? 100), 1000);
+      const limit = Math.min(Number(request.query.limit ?? 100), 2000);
 
       const rows = await prisma.marketMinuteSnapshot.findMany({
         where: {
@@ -51,9 +49,29 @@ export class ApiServer {
       return rows.reverse();
     });
 
+    // Історична аналітика по хвилинах
+    this.app.get<{
+      Params: { symbol: string };
+      Querystring: { limit?: string };
+    }>("/analytics/:symbol", async (request) => {
+      const symbol = request.params.symbol.toUpperCase();
+      const limit = Math.min(Number(request.query.limit ?? 100), 2000);
 
+      const rows = await prisma.marketMinuteAnalytics.findMany({
+        where: {
+          exchange: "binance_spot",
+          symbol,
+        },
+        orderBy: {
+          minute: "desc",
+        },
+        take: limit,
+      });
 
-    // HTTP сервер + WebSocket upgrade
+      return rows.reverse();
+    });
+
+    // WebSocket endpoint для dashboard
     this.app.server.on("upgrade", (request, socket, head) => {
       if (request.url !== "/ws") {
         socket.destroy();
@@ -74,7 +92,7 @@ export class ApiServer {
     console.log(`Dashboard WS: ws://localhost:${this.port}/ws`);
   }
 
-  // Відправляємо дані всім підключеним frontend-клієнтам
+  // Відправляємо live-дані всім frontend-клієнтам
   broadcast(payload: DashboardPayload) {
     const message = JSON.stringify(payload);
 

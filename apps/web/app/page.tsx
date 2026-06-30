@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { DashboardMode } from "../types/dashboard";
 import { useOrderBookMetrics } from "../hooks/useOrderBookMetrics";
 import { useMarketHistory } from "../hooks/useMarketHistory";
+import { useMarketAnalytics } from "../hooks/useMarketAnalytics";
 import { DashboardStats } from "../components/dashboard/DashboardStats";
 import { ImbalanceChart } from "../components/dashboard/ImbalanceChart";
 import { LiquidityBarChart } from "../components/dashboard/LiquidityBarChart";
@@ -16,6 +17,7 @@ import { WatchlistPanel } from "../components/dashboard/WatchlistPanel";
 import { DashboardModeTabs } from "../components/dashboard/DashboardModeTabs";
 import { HistoricalDashboardCharts } from "../components/dashboard/HistoricalDashboardCharts";
 import { HistoryRangeSelector } from "../components/dashboard/HistoryRangeSelector";
+import { HistoricalAnalyticsPanel } from "../components/dashboard/HistoricalAnalyticsPanel";
 
 export default function HomePage() {
   const { rows, connected, imbalanceHistory, symbolHistory } =
@@ -34,6 +36,11 @@ export default function HomePage() {
   const selectedHistory = selected ? symbolHistory[selected.symbol] ?? [] : [];
 
   const { data: historyData, loading: historyLoading } = useMarketHistory(
+    selected?.symbol ?? null,
+    historyLimit
+  );
+
+  const { data: analyticsData, loading: analyticsLoading } = useMarketAnalytics(
     selected?.symbol ?? null,
     historyLimit
   );
@@ -100,11 +107,19 @@ export default function HomePage() {
                 </div>
               </>
             ) : (
-              <HistoricalDashboardCharts
-                symbol={selected?.symbol ?? null}
-                data={historyData}
-                loading={historyLoading}
-              />
+              <>
+                <HistoricalDashboardCharts
+                  symbol={selected?.symbol ?? null}
+                  data={historyData}
+                  loading={historyLoading}
+                />
+
+                <HistoricalAnalyticsPanel
+                  symbol={selected?.symbol ?? null}
+                  data={analyticsData}
+                  loading={analyticsLoading}
+                />
+              </>
             )}
           </div>
         </section>
