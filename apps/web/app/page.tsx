@@ -11,6 +11,8 @@ import { DepthZonesPanel } from "../components/dashboard/DepthZonesPanel";
 import { DepthZonesChart } from "../components/dashboard/DepthZonesChart";
 import { OrderBookTable } from "../components/dashboard/OrderBookTable";
 import { WatchlistPanel } from "../components/dashboard/WatchlistPanel";
+import { useMarketHistory } from "../hooks/useMarketHistory";
+import { HistoricalDashboardCharts } from "../components/dashboard/HistoricalDashboardCharts";
 
 export default function HomePage() {
   const { rows, connected, imbalanceHistory, symbolHistory } =
@@ -25,6 +27,11 @@ export default function HomePage() {
   }, [rows, selectedSymbol]);
 
   const selectedHistory = selected ? symbolHistory[selected.symbol] ?? [] : [];
+
+  const { data: historyData, loading: historyLoading } = useMarketHistory(
+  selected?.symbol ?? null,
+  240
+  );
 
   return (
     <main className="min-h-screen bg-[#050816] text-white">
@@ -71,6 +78,12 @@ export default function HomePage() {
                 data={selectedHistory}
               />
             </div>
+
+           <HistoricalDashboardCharts
+              symbol={selected?.symbol ?? null}
+              data={historyData}
+              loading={historyLoading}
+            />
 
             <div className="grid gap-4 2xl:grid-cols-2">
               <LiquidityBarChart rows={rows} />
